@@ -8,27 +8,6 @@ import (
 	"go.creack.net/bistro-matic/parser"
 )
 
-func putNumberBase(num int, base string) (string, error) {
-	out := ""
-	isNeg := num < 0
-	if isNeg {
-		num = -num
-	}
-	if base == "" {
-		return "", fmt.Errorf("base is empty")
-	}
-	baseLen := len(base)
-
-	for num > 0 {
-		out = string(base[num%baseLen]) + out
-		num /= baseLen
-	}
-	if isNeg {
-		out = "-" + out
-	}
-	return out, nil
-}
-
 func evalExpr(base, ops, expr string, _ int) (string, error) {
 	// Create a new lexer with the given base and operators.
 	lex, err := lexer.New(expr, base, ops)
@@ -46,32 +25,28 @@ func evalExpr(base, ops, expr string, _ int) (string, error) {
 	}
 
 	// Evaluate the AST.
-	evaluator := &Evaluator{}
-	result := evaluator.Evaluate(exprStmt.Expression)
-	return putNumberBase(int(result), base)
+	result := Evaluate(exprStmt.Expression)
+	return parser.PutNumberBase(int(result), base)
 }
 
-// Evaluator evaluates an AST.
-type Evaluator struct{}
-
-// Evaluate evaluates an AST node and returns its value
-func (e *Evaluator) Evaluate(node ast.Expr) int {
+// Evaluate evaluates an AST node and returns its value.
+func Evaluate(node ast.Expr) int {
 	switch n := node.(type) {
 	case ast.NumberExpr:
 		return n.Value
 	case ast.BinaryExpr:
-		return e.evaluateBinaryOpNode(n)
+		return evaluateBinaryOpNode(n)
 	case ast.PrefixExpr:
-		return e.evaluatePrefixNode(n)
+		return evaluatePrefixNode(n)
 	default:
 		panic(fmt.Errorf("unknown node type %T", n))
 	}
 }
 
 // evaluateBinaryOpNode evaluates a binary operation node
-func (e *Evaluator) evaluateBinaryOpNode(node ast.BinaryExpr) int {
-	left := e.Evaluate(node.Left)
-	right := e.Evaluate(node.Right)
+func evaluateBinaryOpNode(node ast.BinaryExpr) int {
+	left := Evaluate(node.Left)
+	right := Evaluate(node.Right)
 
 	switch node.Operator.Type {
 	case lexer.TokPlus:
@@ -96,8 +71,8 @@ func (e *Evaluator) evaluateBinaryOpNode(node ast.BinaryExpr) int {
 }
 
 // evaluatePrefixNode evaluates a unary operation node
-func (e *Evaluator) evaluatePrefixNode(node ast.PrefixExpr) int {
-	operand := e.Evaluate(node.Right)
+func evaluatePrefixNode(node ast.PrefixExpr) int {
+	operand := Evaluate(node.Right)
 
 	switch node.Operator.Type {
 	case lexer.TokMinus:
@@ -105,6 +80,6 @@ func (e *Evaluator) evaluatePrefixNode(node ast.PrefixExpr) int {
 	case lexer.TokPlus:
 		return operand
 	default:
-		panic(fmt.Sprintf("unknown prefix operator: %s", node.Operator.Type))
+		panic(fmt.Errorf("unknown prefix operator: %s", node.Operator.Type))
 	}
 }

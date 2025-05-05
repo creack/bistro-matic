@@ -6,7 +6,7 @@ import (
 	"go.creack.net/bistro-matic/parser"
 )
 
-func TestConvertToInt(t *testing.T) {
+func TestConvertBase(t *testing.T) {
 	tests := []struct {
 		name     string
 		number   string
@@ -70,24 +70,41 @@ func TestConvertToInt(t *testing.T) {
 			expected: 0,
 			wantErr:  true,
 		},
-		// {
-		// 	name:     "UTF-8 base",
-		// 	number:   "你好世界",
-		// 	base:     "你我他她它好世界的是不",
-		// 	expected: 678,
-		// 	wantErr:  false,
-		// },
+		{
+			name:     "UTF-8 base",
+			number:   "你好世界",
+			base:     "我他她它好世界的是你不",
+			expected: 12524,
+			wantErr:  false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parser.ParseNumberBase(tt.number, tt.base)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseNumberBase() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr && err == nil {
+				t.Errorf("ParseNumberBase should have returned an error, but didn't.")
+				return
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("ParseNumberBase(%q, %q) error = %s", tt.number, tt.base, err)
 				return
 			}
 			if got != tt.expected {
-				t.Errorf("ParseNumberBase() = %v, want %v", got, tt.expected)
+				t.Errorf("Unexpected result for ParseNumberBase(%q, %q):\n\tgot:\t%d\n\twant:\t%d", tt.number, tt.base, got, tt.expected)
+			}
+			if tt.wantErr {
+				return
+			}
+
+			// Test the reverse conversion.
+			converted, err := parser.PutNumberBase(got, tt.base)
+			if err != nil {
+				t.Errorf("PutNumberBase(%d, %q) error = %s", got, tt.base, err)
+				return
+			}
+			if converted != tt.number {
+				t.Errorf("Unexpected reverse conversion result for PutNumberBase(%d, %q):\n\tgot:\t%s\n\twant:\t%s", got, tt.base, converted, tt.number)
 			}
 		})
 	}
